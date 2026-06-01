@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buckshot Roulette</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap');
+
+  :root {
+    --bg: #080705;
+    --bg2: #0f0d09;
+    --bg3: #141209;
+    --border: #2a2318;
+    --border2: #3a3020;
+    --text: #d4c5a0;
+    --text-dim: #5a4f38;
+    --text-dimmer: #2a2318;
+    --gold: #c8a96e;
+    --gold-dim: #4a3f28;
+    --red: #e05050;
+    --red-dim: #8b2020;
+    --green: #7ab86e;
+    --green-dim: #3a6a30;
+    --blue: #5090e0;
+    --blue-dim: #204080;
+    --purple: #9080c8;
+    --purple-dim: #4a3080;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Share Tech Mono', 'Courier New', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanlines */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px);
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  #app {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 16px 80px;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    padding: 20px 0 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .title {
+    font-family: 'Bebas Neue', monospace;
+    font-size: 32px;
+    letter-spacing: 10px;
+    color: var(--gold);
+    text-shadow: 0 0 24px rgba(200,169,110,0.35);
+  }
+  .subtitle {
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+  #turn-indicator {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    margin-top: 4px;
+    transition: color 0.3s;
+  }
+
+  /* Setup screen */
+  #setup-screen {
+    text-align: center;
+    padding-top: 60px;
+  }
+  .setup-desc {
+    color: var(--text-dim);
+    font-size: 13px;
+    line-height: 2;
+    max-width: 360px;
+    margin: 32px auto;
+  }
+
+  /* Shells */
+  .shells-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 16px 0;
+    flex-wrap: wrap;
+  }
+  .shells-label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-right: 4px;
+  }
+  .shell {
+    width: 28px;
+    height: 44px;
+    border-radius: 14px 14px 4px 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    cursor: default;
+  }
+  .shell.live {
+    background: linear-gradient(180deg, #c8761a 0%, #8b4a0c 100%);
+    border: 1px solid #e8921e;
+    color: #ffcf80;
+    box-shadow: 0 0 8px rgba(200,118,26,0.45);
+  }
+  .shell.blank {
+    background: linear-gradient(180deg, #3a3a3a 0%, #1a1a1a 100%);
+    border: 1px solid #555;
+    color: #888;
+  }
+  .shells-count {
+    font-size: 11px;
+    color: #3a3020;
+    margin-left: 4px;
+  }
+
+  /* Win odds */
+  .win-odds {
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  #win-odds-text {
+    font-size: 11px;
+    letter-spacing: 2px;
+    transition: color 0.3s;
+  }
+
+  /* Panels */
+  .panels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .panel {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+    transition: all 0.3s;
+  }
+  .panel.active {
+    background: rgba(200,169,110,0.04);
+    border-color: var(--gold);
+    box-shadow: 0 0 12px rgba(200,169,110,0.1);
+  }
+  .panel-title {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  .lives-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+  .heart {
+    width: 16px;
+    height: 16px;
+    font-size: 14px;
+  }
+  .heart.dead { opacity: 0.15; }
+  .items-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .item-badge {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 3px 6px;
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .item-badge.active {
+    background: rgba(200,169,110,0.15);
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+  .no-items {
+    font-size: 11px;
+    color: var(--text-dimmer);
+  }
+
+  /* Action area */
+  .action-area {
+    margin: 16px 0;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    background: rgba(0,0,0,0.3);
+  }
+  .action-title {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+  .btn-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .warnings {
+    margin-top: 8px;
+    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  /* Buttons */
+  button {
+    padding: 8px 14px;
+    font-size: 12px;
+    letter-spacing: 1px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+    text-transform: uppercase;
+    background: rgba(200,169,110,0.08);
+    border: 1px solid var(--gold-dim);
+    color: var(--gold);
+  }
+  button:hover:not(:disabled) { filter: brightness(1.2); }
+  button:disabled {
+    background: transparent;
+    border-color: #1a1a1a;
+    color: var(--text-dimmer);
+    cursor: not-allowed;
+  }
+  .btn-shoot {
+    background: rgba(180,30,30,0.15);
+    border-color: var(--red-dim);
+    color: var(--red);
+  }
+  .btn-self {
+    background: rgba(30,80,180,0.12);
+    border-color: var(--blue-dim);
+    color: var(--blue);
+  }
+  .btn-begin {
+    font-size: 14px;
+    padding: 12px 32px;
+    letter-spacing: 4px;
+    background: rgba(180,30,30,0.15);
+    border-color: var(--red-dim);
+    color: var(--red);
+  }
+  .btn-begin:hover { background: rgba(180,30,30,0.25); }
+
+  /* Log */
+  .log-section {
+    margin: 16px 0;
+    border: 1px solid #1a1812;
+    border-radius: 4px;
+    background: rgba(0,0,0,0.5);
+    max-height: 160px;
+    overflow-y: auto;
+    padding: 8px 12px;
+  }
+  .log-empty {
+    font-size: 11px;
+    color: var(--text-dimmer);
+  }
+  .log-entry {
+    font-size: 11px;
+    line-height: 1.8;
+    border-left: 2px solid var(--text-dimmer);
+    padding-left: 8px;
+    margin-bottom: 2px;
+    color: var(--text-dim);
+  }
+  .log-entry.damage { color: var(--red); border-left-color: var(--red-dim); }
+  .log-entry.good { color: var(--green); border-left-color: var(--green-dim); }
+  .log-entry.info { color: var(--gold); border-left-color: var(--gold-dim); }
+  .log-entry.opp { color: var(--purple); border-left-color: var(--purple-dim); }
+  .log-entry.neutral { color: var(--text-dim); border-left-color: var(--border); }
+
+  /* Status bar */
+  #status-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    text-align: center;
+    padding: 8px;
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: var(--gold);
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+    z-index: 50;
+  }
+
+  /* Modal */
+  #steal-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  #steal-modal.open { display: flex; }
+  .modal-box {
+    background: var(--bg2);
+    border: 1px solid var(--gold-dim);
+    border-radius: 4px;
+    padding: 24px;
+    max-width: 340px;
+    width: 90%;
+  }
+  .modal-title {
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: var(--gold);
+    margin-bottom: 16px;
+  }
+  .modal-desc {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+  .modal-btns { display: flex; flex-direction: column; gap: 8px; }
+  .btn-cancel { color: var(--text-dim); border-color: #1a1812; margin-top: 4px; }
+
+  /* End overlay — NOT fullscreen so log is still visible */
+  #end-overlay {
+    display: none;
+    margin: 16px 0;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 32px 16px;
+    text-align: center;
+    background: rgba(0,0,0,0.7);
+  }
+  #end-overlay.open { display: block; }
+  .end-emoji { font-size: 48px; margin-bottom: 16px; }
+  .end-title {
+    font-family: 'Bebas Neue', monospace;
+    font-size: 36px;
+    letter-spacing: 8px;
+    margin-bottom: 8px;
+  }
+  .end-title.win { color: var(--green); }
+  .end-title.lose { color: var(--red); }
+  .end-subtitle {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    margin-bottom: 24px;
+  }
+  .log-label {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    margin: 0 0 6px;
+    text-transform: uppercase;
+  }
+
+  /* Scrollbar */
+  .log-section::-webkit-scrollbar { width: 4px; }
+  .log-section::-webkit-scrollbar-track { background: transparent; }
+  .log-section::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="header">
+    <div class="title">Buckshot Roulette</div>
+    <div class="subtitle">ENGINE ANALYSIS EDITION</div>
+    <div id="turn-indicator"></div>
+  </div>
+
+  <!-- Setup screen -->
+  <div id="setup-screen">
+    <p class="setup-desc">
+      Face the dealer in a game of loaded chances.<br>
+      The engine plays optimally. You won't be spared.
+    </p>
+    <button class="btn-begin">BEGIN</button>
+  </div>
+
+  <!-- Game screen (hidden until game starts) -->
+  <div id="game-screen" style="display:none">
+    <!-- Shells -->
+    <div class="shells-row" id="shells-row"></div>
+
+    <!-- Win odds -->
+    <div class="win-odds"><span id="win-odds-text"></span></div>
+
+    <!-- Panels -->
+    <div class="panels">
+      <div class="panel" id="panel-player">
+        <div class="panel-title">▶ YOU</div>
+        <div class="lives-row" id="lives-player"></div>
+        <div class="items-grid" id="items-player"></div>
+      </div>
+      <div class="panel" id="panel-dealer">
+        <div class="panel-title">DEALER ◀</div>
+        <div class="lives-row" id="lives-dealer"></div>
+        <div class="items-grid" id="items-dealer"></div>
+      </div>
+    </div>
+
+    <!-- Action area -->
+    <div class="action-area" id="action-area">
+      <div class="action-title">Actions</div>
+      <div class="btn-grid" id="btn-grid"></div>
+      <div class="warnings" id="warnings"></div>
+    </div>
+
+    <!-- End overlay (inline, so log is still accessible) -->
+    <div id="end-overlay">
+      <div class="end-emoji" id="end-emoji"></div>
+      <div class="end-title" id="end-title"></div>
+      <div class="end-subtitle" id="end-subtitle"></div>
+      <button class="btn-begin" style="margin-bottom:24px">PLAY AGAIN</button>
+      <div class="log-label">Game Log</div>
+    </div>
+
+    <!-- Log always visible -->
+    <div class="log-section" id="game-log"></div>
+  </div>
+</div>
+
+<!-- Steal modal -->
+<div id="steal-modal">
+  <div class="modal-box">
+    <div class="modal-title">STEAL ITEM</div>
+    <div class="modal-desc">Choose which item to steal from dealer:</div>
+    <div class="modal-btns" id="steal-btns"></div>
+  </div>
+</div>
+
+<div id="status-bar"></div>
+
+<script>
+
+    // ─── STATE ───────────────────────────────────────────────────────────────────
+
+    let gs = null;
+    let playerTurn = true;
+    let phase = "setup"; // setup | playing | win | lose
+    let thinking = false;
+    let winChance = 50;
+    let gameLog = [];
+
+    const STEALABLE = ["saw", "inverter", "beer", "jammer", "cig", "spyglass", "phone"];
+
+    const ITEM_META = {
+      saw:        { label: "Handsaw",    icon: "🪚", desc: "Next shot deals 2 damage" },
+      beer:       { label: "Beer",       icon: "🍺", desc: "Eject current shell" },
+      cig:        { label: "Cigarette",  icon: "🚬", desc: "Heal 1 life" },
+      inverter:   { label: "Inverter",   icon: "🔀", desc: "Invert next shell" },
+      jammer:     { label: "Jammer",     icon: "📡", desc: "Keep turn after shooting opp" },
+      adrenaline: { label: "Adrenaline", icon: "💉", desc: "Steal opponent item" },
+      spyglass:   { label: "Spyglass",   icon: "🔭", desc: "Reveal current chamber shell" },
+      phone:      { label: "Burner Phone", icon: "📱", desc: "Reveal any shell position (3+ shells required)" },
+    };
+
+    // Shell sequence: actual ordered chamber. Index 0 = next to fire.
+    let shellSequence = [];
+
+    function cloneItems(it) { return { ...it }; }
+    function cloneState(s) { return { dshell: s.dshell, bshell: s.bshell, my_items: cloneItems(s.my_items), opp_items: cloneItems(s.opp_items) }; }
+
+    // ─── LOGGING ─────────────────────────────────────────────────────────────────
+
+    function addLog(msg, type = "neutral") {
+      gameLog = [...gameLog.slice(-60), { msg, type }];
+      renderLog();
+    }
+
+    function renderLog() {
+      const el = document.getElementById("game-log");
+      if (gameLog.length === 0) {
+        el.innerHTML = '<div class="log-empty">— awaiting action —</div>';
+        return;
+      }
+      el.innerHTML = gameLog.map(e => `<div class="log-entry ${e.type}">${escHtml(e.msg)}</div>`).join("");
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function escHtml(s) {
+      return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    }
+
+    function openStealModal() {
+      if (!gs) return;
+      const btns = document.getElementById("steal-btns");
+      const stealable = STEALABLE.filter(t => gs.opp_items[t] > 0);
+      btns.innerHTML = stealable.map(tool =>
+        `<button onclick="handleSteal('${tool}')">${ITEM_META[tool].icon} ${ITEM_META[tool].label} ×${gs.opp_items[tool]}</button>`
+      ).join("") + `<button class="btn-cancel" onclick="closeStealModal()">Cancel</button>`;
+      document.getElementById("steal-modal").classList.add("open");
+    }
+    function closeStealModal() {
+      document.getElementById("steal-modal").classList.remove("open");
+    }
+    function handleSteal(tool) {
+      if (!gs) return;
+      const ns = cloneState(gs);
+      ns.my_items.adrenaline -= 1;
+      ns.my_items[tool] = (ns.my_items[tool] || 0) + 1;
+      ns.opp_items[tool] = Math.max(0, (ns.opp_items[tool] || 0) - 1);
+      addLog(`Adrenaline: stole ${ITEM_META[tool].icon} ${ITEM_META[tool].label} from dealer`, "good");
+      closeStealModal();
+      gs = ns; render();
+    }
+
+
+    function doShot(state, target, fromPlayer) {
+      const total = state.dshell + state.bshell;
+      if (total === 0) return { state, isLive: false };
+      const inverting = fromPlayer ? state.my_items.inverter_using : state.opp_items.inverter_using;
+      const saw = fromPlayer ? state.my_items.saw_using : state.opp_items.saw_using;
+
+      // Use shell sequence for actual shot resolution
+      let actualShell = shellSequence.length > 0 ? shellSequence[0] : (Math.random() < state.dshell / total ? "live" : "blank");
+      // Remove fired shell from sequence
+      if (shellSequence.length > 0) shellSequence.shift();
+
+      // Inverter flips what we "get": live becomes blank effect and vice versa
+      const isLive = inverting ? (actualShell === "blank") : (actualShell === "live");
+      const dmg = saw ? 2 : 1;
+      const shellName = isLive ? "🔴 LIVE" : "⚪ BLANK";
+      const ns = cloneState(state);
+      if (actualShell === "live") ns.dshell -= 1; else ns.bshell -= 1;
+      if (fromPlayer) {
+        ns.my_items.saw_using = false; ns.my_items.inverter_using = false;
+        if (ns.my_items.jammer_using > 0) ns.my_items.jammer_using -= 1;
+      } else {
+        ns.opp_items.saw_using = false; ns.opp_items.inverter_using = false;
+        if (ns.opp_items.jammer_using > 0) ns.opp_items.jammer_using -= 1;
+      }
+      if (target === "opp") {
+        const victim = fromPlayer ? "opp_items" : "my_items";
+        if (isLive) {
+          ns[victim].lives = Math.max(0, ns[victim].lives - dmg);
+          addLog(`${fromPlayer ? "You" : "Dealer"} shot ${fromPlayer ? "dealer" : "you"} — ${shellName}! ${dmg} damage`, fromPlayer ? "good" : "damage");
+        } else {
+          addLog(`${fromPlayer ? "You" : "Dealer"} shot ${fromPlayer ? "dealer" : "you"} — ${shellName}. Miss`, "neutral");
+        }
+      } else {
+        const self = fromPlayer ? "my_items" : "opp_items";
+        if (isLive) {
+          ns[self].lives = Math.max(0, ns[self].lives - dmg);
+          addLog(`${fromPlayer ? "You" : "Dealer"} shot self — ${shellName}! ${dmg} damage`, fromPlayer ? "damage" : "good");
+        } else {
+          addLog(`${fromPlayer ? "You" : "Dealer"} shot self — ${shellName}. Blank (keep turn)`, fromPlayer ? "good" : "opp");
+        }
+      }
+      return { state: ns, isLive };
+    }
+
+    function generateShellSequence(dshell, bshell) {
+      const arr = [];
+      for (let i = 0; i < dshell; i++) arr.push("live");
+      for (let i = 0; i < bshell; i++) arr.push("blank");
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function newItems() {
+      return { lives: 0, saw: 0, inverter: 0, adrenaline: 0, beer: 0, jammer: 0, cig: 0, spyglass: 0, phone: 0, jammer_using: 0, saw_using: false, inverter_using: false };
+    }
+
+    function reloadShells(state, nextTurnIsPlayer) {
+      const totalShells = 2 + Math.floor(Math.random() * 5);
+      const dshell = 1 + Math.floor(Math.random() * (totalShells - 1));
+      const bshell = totalShells - dshell;
+      const itemPool = ["saw", "beer", "cig", "inverter", "jammer", "adrenaline", "spyglass", "phone"];
+      function giveItems(items) {
+        const it = newItems();
+        it.lives = items.lives;
+        const count = 2 + Math.floor(Math.random() * 4);
+        for (let i = 0; i < count; i++) {
+          const item = itemPool[Math.floor(Math.random() * itemPool.length)];
+          it[item] = Math.min((it[item] || 0) + 1, 3);
+        }
+        return it;
+      }
+      shellSequence = generateShellSequence(dshell, bshell);
+      gs = { dshell, bshell, my_items: giveItems(state.my_items), opp_items: giveItems(state.opp_items) };
+      addLog(`── Reload ── ${dshell} live / ${bshell} blank`, "info");
+      render();
+      if (nextTurnIsPlayer) {
+        thinking = false;
+        playerTurn = true;
+        render();
+      } else {
+        playerTurn = false;
+        thinking = true;
+        render();
+        setTimeout(() => doAITurn(gs), 900);
+      }
+    }
+
+    function checkEnd(state, keepTurnOnEmpty) {
+      if (state.my_items.lives <= 0) {
+        gs = state; phase = "lose";
+        addLog("💀 You have been eliminated.", "damage");
+        renderEndScreen(false);
+        render();
+        return true;
+      }
+      if (state.opp_items.lives <= 0) {
+        gs = state; phase = "win";
+        addLog("✓ Dealer eliminated.", "good");
+        renderEndScreen(true);
+        render();
+        return true;
+      }
+      if (state.dshell === 0 && state.bshell === 0) {
+        gs = state;
+        addLog("Shells exhausted — reloading...", "neutral");
+        render();
+        setTimeout(() => reloadShells(state, keepTurnOnEmpty), 900);
+        return true;
+      }
+      return false;
+    }
+
+    // ─── RENDER ──────────────────────────────────────────────────────────────────
+
+    function render() {
+      renderShells();
+      renderPanels();
+      renderActions();
+      renderWinOdds();
+      renderTurnIndicator();
+      renderStatusBar();
+      renderLog();
+    }
+
+    function renderShells() {
+      if (!gs) return;
+      const row = document.getElementById("shells-row");
+      const shells = [];
+      for (let i = 0; i < gs.dshell; i++) shells.push("live");
+      for (let i = 0; i < gs.bshell; i++) shells.push("blank");
+      // shuffle display order (don't reveal sequence)
+      shells.sort(() => Math.random() - 0.5);
+      row.innerHTML =
+        `<span class="shells-label">SHELLS</span>` +
+        shells.map(t => `<div class="shell ${t}">${t === "live" ? "◆" : "○"}</div>`).join("") +
+        `<span class="shells-count">${gs.dshell}L / ${gs.bshell}B</span>`;
+    }
+
+    function renderLives(el, count, max = 4) {
+      el.innerHTML = Array.from({length: max}, (_, i) =>
+        `<span class="heart${i < count ? "" : " dead"}">${i < count ? "♥" : "♡"}</span>`
+      ).join("");
+    }
+
+    function renderItems(el, items, isPlayer) {
+      const display = [];
+      for (const [key, meta] of Object.entries(ITEM_META)) {
+        const count = items[key] || 0;
+        for (let i = 0; i < count; i++) display.push({ key: `${key}_${i}`, tool: key, meta, active: isPlayer });
+      }
+      if (items.saw_using) display.push({ key: "saw_act", tool: null, meta: { icon: "🪚", label: "Saw Active" }, active: true });
+      if (items.inverter_using) display.push({ key: "inv_act", tool: null, meta: { icon: "🔀", label: "Inverted" }, active: true });
+      if (items.jammer_using > 0) display.push({ key: "jam_act", tool: null, meta: { icon: "📡", label: "Jamming" }, active: true });
+
+      if (display.length === 0) { el.innerHTML = '<span class="no-items">— no items —</span>'; return; }
+      el.innerHTML = display.map(({meta, active}) =>
+        `<span class="item-badge${active ? " active" : ""}" title="${meta.desc || ""}">${meta.icon} ${meta.label}</span>`
+      ).join("");
+    }
+
+    function renderPanels() {
+      if (!gs) return;
+      renderLives(document.getElementById("lives-player"), gs.my_items.lives);
+      renderLives(document.getElementById("lives-dealer"), gs.opp_items.lives);
+      renderItems(document.getElementById("items-player"), gs.my_items, true);
+      renderItems(document.getElementById("items-dealer"), gs.opp_items, false);
+
+      const pp = document.getElementById("panel-player");
+      const pd = document.getElementById("panel-dealer");
+      if (phase === "playing") {
+        pp.classList.toggle("active", playerTurn && !thinking);
+        pd.classList.toggle("active", !playerTurn || thinking);
+      } else {
+        pp.classList.remove("active");
+        pd.classList.remove("active");
+      }
+    }
+
+    function probStealopp(s, tool) {
+      const distinct = STEALABLE.filter(t => s.opp_items[t] > 0).length;
+      if (distinct === 0) return 0;
+      return s.opp_items[tool] > 0 ? 1.0 / distinct : 0;
+    }
+
+    function generateMoves(s) {
+      const moves = [];
+      if (s.dshell > 0 || s.bshell > 0) { moves.push("ShootOpp"); moves.push("ShootSelf"); }
+      if (!s.my_items.inverter_using) {
+        if (s.my_items.beer > 0 && (s.dshell > 0 || s.bshell > 0)) moves.push("UseBeer");
+        if (s.my_items.cig > 0 && s.my_items.lives < 4 && s.my_items.lives > 1) moves.push("UseCig");
+        if (s.my_items.jammer > 0 && s.my_items.jammer_using === 0) moves.push("UseJammer");
+        if (s.my_items.saw > 0 && !s.my_items.saw_using) moves.push("UseSaw");
+        if (s.my_items.inverter > 0) moves.push("UseInverter");
+        if (s.my_items.adrenaline > 0) {
+          for (const t of STEALABLE) { if (probStealopp(s, t) > 0) moves.push("UseAdrenaline" + t); }
+        }
+        // Spyglass: only if we don't already know the next shell
+        if (s.my_items.spyglass > 0 && !s.my_items._knownNext && (s.dshell + s.bshell) > 0) moves.push("UseSpyGlass");
+        // Phone: only if 3+ shells and we don't already have full info
+        if (s.my_items.phone > 0 && (s.dshell + s.bshell) >= 3) moves.push("UsePhone");
+      }
+      return moves;
+    }
+
+    function renderActions() {
+      const area = document.getElementById("action-area");
+      if (phase !== "playing" || !playerTurn || thinking || !gs) {
+        area.style.display = "none";
+        return;
+      }
+      area.style.display = "block";
+
+      const moves = generateMoves(gs);
+      const canShootOpp = moves.includes("ShootOpp");
+      const canShootSelf = moves.includes("ShootSelf");
+      const canAdrenaline = gs.my_items.adrenaline > 0 && STEALABLE.some(t => gs.opp_items[t] > 0);
+
+      const grid = document.getElementById("btn-grid");
+      let btns = "";
+      btns += `<button class="btn-shoot" ${canShootOpp ? "" : "disabled"} onclick="playerAction('ShootOpp')">🔫 Shoot Dealer</button>`;
+      btns += `<button class="btn-self" ${canShootSelf ? "" : "disabled"} onclick="playerAction('ShootSelf')">🔫 Shoot Self</button>`;
+      if (gs.my_items.beer > 0) btns += `<button onclick="playerAction('UseBeer')">🍺 Beer</button>`;
+      if (gs.my_items.cig > 0 && gs.my_items.lives < 4 && gs.my_items.lives > 1) btns += `<button onclick="playerAction('UseCig')">🚬 Cigarette</button>`;
+      if (gs.my_items.saw > 0 && !gs.my_items.saw_using) btns += `<button onclick="playerAction('UseSaw')">🪚 Handsaw</button>`;
+      if (gs.my_items.jammer > 0 && gs.my_items.jammer_using === 0) btns += `<button onclick="playerAction('UseJammer')">📡 Jammer</button>`;
+      if (gs.my_items.inverter > 0) btns += `<button onclick="playerAction('UseInverter')">🔀 Inverter</button>`;
+      if (canAdrenaline) btns += `<button onclick="playerAction('UseAdrenaline')">💉 Adrenaline</button>`;
+      if (gs.my_items.spyglass > 0 && shellSequence.length > 0) btns += `<button onclick="playerAction('UseSpyGlass')">🔭 Spyglass</button>`;
+      const totalShells = gs.dshell + gs.bshell;
+      if (gs.my_items.phone > 0 && totalShells >= 3 && shellSequence.length >= 2) btns += `<button onclick="playerAction('UsePhone')">📱 Burner Phone</button>`;
+      grid.innerHTML = btns;
+
+      const warn = document.getElementById("warnings");
+      let warnings = "";
+      if (gs.my_items.saw_using) warnings += `<span style="color:var(--gold)">⚠ Saw active — next shot deals 2 damage</span>`;
+      if (gs.my_items.inverter_using) warnings += `<span style="color:var(--purple)">⚠ Inverter active — shell type inverted</span>`;
+      if (gs.my_items.jammer_using > 0) warnings += `<span style="color:var(--green)">⚠ Jammer active — keep turn after hitting dealer</span>`;
+      warn.innerHTML = warnings;
+    }
+
+    function renderWinOdds() {
+      const el = document.getElementById("win-odds-text");
+      el.textContent = `WIN ODDS: ${winChance}%`;
+      el.style.color = winChance > 60 ? "var(--green)" : winChance < 40 ? "var(--red)" : "var(--gold)";
+    }
+
+    function renderTurnIndicator() {
+      const el = document.getElementById("turn-indicator");
+      if (phase !== "playing") { el.textContent = ""; return; }
+      if (thinking) { el.style.color = "var(--purple)"; el.textContent = "DEALER THINKING..."; }
+      else if (playerTurn) { el.style.color = "var(--gold)"; el.textContent = "YOUR TURN"; }
+      else { el.style.color = "var(--text-dim)"; el.textContent = "DEALER'S TURN"; }
+    }
+
+    function renderStatusBar() {
+      const el = document.getElementById("status-bar");
+      if (phase === "playing") el.textContent = `${playerTurn ? "YOUR MOVE" : (thinking ? "CALCULATING..." : "WAITING")} · WIN ${winChance}%`;
+      else el.textContent = phase === "setup" ? "BUCKSHOT ROULETTE" : (phase === "win" ? "DEALER DOWN" : "GAME OVER");
+    }
+
+    function renderEndScreen(win) {
+      const overlay = document.getElementById("end-overlay");
+      overlay.classList.add("open");
+      document.getElementById("end-emoji").textContent = win ? "💀" : "🩸";
+      const title = document.getElementById("end-title");
+      title.textContent = win ? "DEALER DOWN" : "YOU'RE DEAD";
+      title.className = "end-title " + (win ? "win" : "lose");
+      document.getElementById("end-subtitle").textContent = win ? "THE HOUSE LOSES TODAY" : "THE HOUSE ALWAYS WINS";
+      document.getElementById("action-area").style.display = "none";
+    }
+
+function playerAction(mv) {
+      if (!playerTurn || phase !== "playing" || thinking) return;
+      let ns = cloneState(gs);
+
+      if (mv === "ShootOpp") {
+        const hadJammer = gs.my_items.jammer_using > 0;
+        const { state, isLive } = doShot(ns, "opp", true);
+        ns = state;
+        const keepTurn = hadJammer;
+        if (checkEnd(ns, keepTurn)) return;
+        gs = ns;
+        if (!keepTurn) {
+          playerTurn = false;
+          render();
+          setTimeout(() => doAITurn(ns), 800);
+        } else {
+          render();
+        }
+        return;
+      }
+
+      if (mv === "ShootSelf") {
+        const { state, isLive } = doShot(ns, "self", true);
+        ns = state;
+        if (isLive) {
+          if (checkEnd(ns, false)) return;
+          gs = ns; playerTurn = false;
+          render();
+          setTimeout(() => doAITurn(ns), 800);
+        } else {
+          if (checkEnd(ns, true)) return;
+          gs = ns;
+          render();
+        }
+        return;
+      }
+
+      if (mv === "UseBeer") {
+        const total = ns.dshell + ns.bshell;
+        if (total === 0) return;
+        const ejectedShell = shellSequence.length > 0 ? shellSequence.shift() : (Math.random() < ns.dshell / total ? "live" : "blank");
+        const isLive = ejectedShell === "live";
+        if (isLive) { ns.dshell -= 1; addLog("Beer: ejected 🔴 LIVE shell", "good"); }
+        else { ns.bshell -= 1; addLog("Beer: ejected ⚪ BLANK shell", "neutral"); }
+        ns.my_items.beer -= 1;
+        if (checkEnd(ns, true)) return;
+        gs = ns; render(); return;
+      }
+      if (mv === "UseCig") {
+        ns.my_items.lives = Math.min(4, ns.my_items.lives + 1);
+        ns.my_items.cig -= 1;
+        addLog("Cigarette: +1 life", "good");
+        gs = ns; render(); return;
+      }
+      if (mv === "UseSaw") {
+        ns.my_items.saw_using = true; ns.my_items.saw -= 1;
+        addLog("Handsaw: next shot deals 2 damage", "info");
+        gs = ns; render(); return;
+      }
+      if (mv === "UseJammer") {
+        ns.my_items.jammer_using = 1; ns.my_items.jammer -= 1;
+        addLog("Jammer: keep turn after shooting opponent", "info");
+        gs = ns; render(); return;
+      }
+      if (mv === "UseInverter") {
+        ns.my_items.inverter_using = true; ns.my_items.inverter -= 1;
+        addLog("Inverter: next shot inverted", "info");
+        gs = ns; render(); return;
+      }
+      if (mv === "UseAdrenaline") {
+        openStealModal();
+        return;
+      }
+      if (mv === "UseSpyGlass") {
+        const next = shellSequence[0];
+        ns.my_items.spyglass -= 1;
+        const reveal = next === "live" ? "🔴 LIVE" : "⚪ BLANK";
+        addLog(`Spyglass: current chamber is ${reveal}`, "info");
+        gs = ns; render(); return;
+      }
+      if (mv === "UsePhone") {
+        const total = ns.dshell + ns.bshell;
+        if (total < 3) return;
+        // Pick a random shell from position 1 onward (not current chamber)
+        const idx = 1 + Math.floor(Math.random() * (shellSequence.length - 1));
+        const revealed = shellSequence[idx];
+        const reveal = revealed === "live" ? "🔴 LIVE" : "⚪ BLANK";
+        ns.my_items.phone -= 1;
+        addLog(`Burner Phone: shell #${idx + 1} in chamber is ${reveal}`, "info");
+        gs = ns; render(); return;
+      }
+    }
+
+
+// ─── WASM ENGINE INIT ────────────────────────────────────────────────────────
+(async () => {
+  try {
+    const { default: init, Interface } = await import("./buckshot.js");
+    await init();
+    const platform = new Interface();
+    platform.post("engine init");
+    
+    console.log("Wasm engine loaded");
+
+    // ─── GAME ENGINE ─────────────────────────────────────────────────────────────
+
+    function flipState(s) { return { dshell: s.dshell, bshell: s.bshell, my_items: cloneItems(s.opp_items), opp_items: cloneItems(s.my_items) }; }
+
+    // ─── GAME SETUP ──────────────────────────────────────────────────────────────
+
+    document.querySelectorAll('.btn-begin').forEach(btn => {
+        btn.addEventListener("click", startGame);
+    });
+
+    function randomSetup() {
+      const totalShells = 2 + Math.floor(Math.random() * 5);
+      const dshell = 1 + Math.floor(Math.random() * (totalShells - 1));
+      const bshell = totalShells - dshell;
+      const startLives = 4;
+      const itemPool = ["saw", "beer", "cig", "inverter", "jammer", "adrenaline", "spyglass", "phone"];
+      function randomItems() {
+        const it = newItems();
+        it.lives = startLives;
+        const count = 2 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < count; i++) {
+          const item = itemPool[Math.floor(Math.random() * itemPool.length)];
+          if (it[item] !== undefined) it[item] = Math.min((it[item] || 0) + 1, 3);
+        }
+        return it;
+      }
+      shellSequence = generateShellSequence(dshell, bshell);
+      return { dshell, bshell, my_items: randomItems(), opp_items: randomItems() };
+    }
+
+    // ─── GAME FLOW ────────────────────────────────────────────────────────────────
+
+    function startGame() {
+      gs = randomSetup();
+      playerTurn = true;
+      phase = "playing";
+      thinking = false;
+      gameLog = [];
+
+      platform.post("engine init");
+
+      document.getElementById("setup-screen").style.display = "none";
+      document.getElementById("game-screen").style.display = "block";
+      document.getElementById("end-overlay").classList.remove("open");
+
+      addLog(`New round — ${gs.dshell} live, ${gs.bshell} blank`, "info");
+      addLog(`Your lives: ${gs.my_items.lives} | Dealer lives: ${gs.opp_items.lives}`, "info");
+      render();
+    }
+
+    // ─── AI ──────────────────────────────────────────────────────────────────────
+    function loadPerson(person, items) {
+    platform.post(`engine s ${person} lives ${items.lives}`);
+    platform.post(`engine s ${person} adrenaline ${items.adrenaline}`);
+    platform.post(`engine s ${person} beer ${items.beer}`);
+    platform.post(`engine s ${person} cig ${items.cig}`);
+    platform.post(`engine s ${person} inverter ${items.inverter}`);
+    platform.post(`engine s ${person} jammer ${items.jammer}`);
+    platform.post(`engine s ${person} phone ${items.phone}`);
+    platform.post(`engine s ${person} saw ${items.saw}`);
+    platform.post(`engine s ${person} spyglass ${items.spyglass}`);
+}
+
+function loadEngine(state) {
+    platform.post(`engine s dshell ${state.dshell}`);
+    platform.post(`engine s bshell ${state.bshell}`);
+    loadPerson("my", state.my_items);
+    loadPerson("opp", state.opp_items);
+}
+
+
+    window.doAITurn = (state) => {
+      thinking = true;
+      render();
+      const flipped = flipState(state);
+    
+      loadEngine(flipped);
+
+      platform.post("engine print");
+      const reply = platform.post("engine go").split(" ");
+      winChance = 100 - Number(reply[1]);
+      setTimeout(() => simulateAI(state, reply[0]), 400);
+    }
+
+    function simulateAI(state, mv) {
+        mv = mv.toLowerCase();
+      if (mv === "shootopp") {
+        const hadJammer = state.opp_items.jammer_using > 0;
+        const { state: ns, isLive } = doShot(state, "opp", false);
+        ns.opp_items._knownNext = undefined;
+        const keepTurn = hadJammer;
+        if (checkEnd(ns, !keepTurn)) { thinking = false; return; }
+        gs = ns; render();
+        if (keepTurn) setTimeout(() => doAITurn(ns), 700);
+        else { thinking = false; playerTurn = true; render(); }
+        return;
+      }
+      if (mv === "shootself") {
+        const { state: ns, isLive } = doShot(state, "self", false);
+        ns.opp_items._knownNext = undefined;
+        if (isLive) {
+          if (checkEnd(ns, true)) { thinking = false; return; }
+          gs = ns; thinking = false; playerTurn = true; render();
+        } else {
+          if (checkEnd(ns, false)) { thinking = false; return; }
+          gs = ns; render();
+          setTimeout(() => doAITurn(ns), 700);
+        }
+        return;
+      }
+
+      let ns = cloneState(state);
+      if (mv === "usebeer") {
+        const total = ns.dshell + ns.bshell;
+        if (total > 0) {
+          const ejectedShell = shellSequence.length > 0 ? shellSequence.shift() : (Math.random() < ns.dshell / total ? "live" : "blank");
+          if (ejectedShell === "live") { ns.dshell -= 1; addLog("Dealer used Beer — ejected 🔴 LIVE", "opp"); }
+          else { ns.bshell -= 1; addLog("Dealer used Beer — ejected ⚪ BLANK", "opp"); }
+          ns.opp_items.beer -= 1;
+          platform.post("engine commit");
+        }
+        if (checkEnd(ns, false)) { thinking = false; return; }
+      } else if (mv === "usecig") {
+        ns.opp_items.lives = Math.min(4, ns.opp_items.lives + 1);
+        ns.opp_items.cig -= 1;
+        platform.post("engine commit");
+        addLog("Dealer used Cigarette: +1 life", "opp");
+      } else if (mv === "usesaw") {
+        ns.opp_items.saw_using = true; ns.opp_items.saw -= 1;
+        addLog("Dealer used Handsaw", "opp");
+        platform.post("engine commit");
+      } else if (mv === "usejammer") {
+        ns.opp_items.jammer_using = 1; ns.opp_items.jammer -= 1;
+        addLog("Dealer used Jammer", "opp");
+        platform.post("engine commit");
+      } else if (mv === "useinverter") {
+        ns.opp_items.inverter_using = true; ns.opp_items.inverter -= 1;
+        addLog("Dealer used Inverter", "opp");
+        platform.post("engine commit");
+      } else if (mv.startsWith("useadrenaline")) {
+        const tool = mv.split("_")[1];
+        ns.opp_items.adrenaline -= 1;
+        ns.opp_items[tool] = Math.min((ns.opp_items[tool] || 0) + 1, 3);
+        ns.my_items[tool] = Math.max(0, (ns.my_items[tool] || 0) - 1);
+        addLog(`Dealer stole your ${ITEM_META[tool]?.icon} ${ITEM_META[tool]?.label}`, "damage");
+        platform.post("engine commit");
+      } else if (mv === "usespyglass") {
+        const next = shellSequence[0];
+        ns.opp_items.spyglass -= 1;
+        ns.opp_items._knownNext = next;
+        addLog(`Dealer used Spyglass — peering into the chamber...`, "opp");
+        // Pass ds (live) or bs (blank) so engine knows what was revealed
+        const spyResult = next === "live" ? "ds" : "bs";
+        platform.post(`engine commit ${spyResult}`);
+        } else if (mv === "usephone") {
+        const idx = 1 + Math.floor(Math.random() * (shellSequence.length - 1));
+        const revealed = shellSequence[idx];
+        ns.opp_items.phone -= 1;
+        addLog(`Dealer used Burner Phone — checking a shell position...`, "opp");
+        // Pass ds/bs + 1-indexed position
+        const phoneResult = revealed === "live" ? "ds" : "bs";
+        platform.post(`engine commit ${phoneResult} ${idx + 1}`);
+        }
+      gs = ns; render();
+      setTimeout(() => doAITurn(ns), 600);
+    }
+
+  } catch(e) {
+    console.log("Wasm engine not found — using JS fallback:", e.message);
+    window.platform = null;
+  }
+})();
+</script>
+</body>
+</html>
