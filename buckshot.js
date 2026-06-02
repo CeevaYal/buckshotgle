@@ -43,6 +43,17 @@ export class Interface {
         }
     }
     /**
+     * @param {Uint8Array} input
+     * @param {string} s
+     */
+    set_phone_vec(input, s) {
+        const ptr0 = passArray8ToWasm0(input, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(s, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        wasm.interface_set_phone_vec(this.__wbg_ptr, ptr0, len0, ptr1, len1);
+    }
+    /**
      * @param {boolean} arg0
      */
     set engaging(arg0) {
@@ -89,6 +100,13 @@ function getUint8ArrayMemory0() {
         cachedUint8ArrayMemory0 = new Uint8Array(wasm.memory.buffer);
     }
     return cachedUint8ArrayMemory0;
+}
+
+function passArray8ToWasm0(arg, malloc) {
+    const ptr = malloc(arg.length * 1, 1) >>> 0;
+    getUint8ArrayMemory0().set(arg, ptr / 1);
+    WASM_VECTOR_LEN = arg.length;
+    return ptr;
 }
 
 function passStringToWasm0(arg, malloc, realloc) {

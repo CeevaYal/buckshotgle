@@ -6,6 +6,7 @@ export class Interface {
     [Symbol.dispose](): void;
     constructor();
     post(cmd: string): string;
+    set_phone_vec(input: Uint8Array, s: string): void;
     engaging: boolean;
 }
 
@@ -18,6 +19,7 @@ export interface InitOutput {
     readonly __wbg_set_interface_engaging: (a: number, b: number) => void;
     readonly interface_new: () => number;
     readonly interface_post: (a: number, b: number, c: number) => [number, number];
+    readonly interface_set_phone_vec: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly __wbindgen_externrefs: WebAssembly.Table;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
